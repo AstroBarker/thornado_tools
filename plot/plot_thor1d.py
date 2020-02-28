@@ -47,7 +47,7 @@ with h5py.File(sys.argv[1], 'r') as f:
         uCF_D = f['/Fluid Fields/Conserved/Conserved Baryon Density'][:]
         df = mb * uCF_Ne[0][0][:] / uCF_D[0][0][:]  
     else:
-        Print("Please supply a supported field.")      
+        print("Please supply a supported field, or add it in.")      
     
     time = f['Time'][:]
     x1 = f['/Spatial Grid/X1'][:]
