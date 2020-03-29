@@ -12,55 +12,76 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 import h5py
 import sys
-
-# Global Plotting Settings
-mpl.rcParams['lines.linewidth'] = 4
-mpl.rcParams['legend.handlelength']=4
-mpl.rcParams['legend.fontsize']=14
-mpl.rcParams['legend.frameon']=False
-mpl.rcParams['axes.labelsize']=18
-mpl.rcParams['xtick.minor.visible']=True
-mpl.rcParams['ytick.minor.visible']=True
-mpl.rcParams['axes.linewidth'] = 2
-mpl.rcParams['xtick.major.width'] = 2
-mpl.rcParams['ytick.major.width'] = 2
-mpl.rcParams['xtick.minor.width'] = 2
-mpl.rcParams['ytick.minor.width'] = 2
-mpl.rcParams['xtick.labelsize']   = 14
-mpl.rcParams['ytick.labelsize']   = 14
+import argparse
 
 mb = 1.660539 * pow(10,-24)
+
+parser = argparse.ArgumentParser(description='Quick plot some data')
+parser.add_argument('file', metavar='file', type=str, 
+    help='file to plot')
+parser.add_argument('y', metavar='y', type=str, 
+    help='field to plot along y axis', default = 'uCF_D')
+parser.add_argument('-x', metavar='x', type=str, 
+    help='field to plot along x axis', default='x')    
+
+args = parser.parse_args()
 
 with h5py.File(sys.argv[1], 'r') as f:
     for key in f.keys():
         print(key)
 
-    # These are the only supported fields for quick plotting. Add more if necessary.
-    if (sys.argv[2] == 'uCF_D'):
-        df = f['/Fluid Fields/Conserved/Conserved Baryon Density'][:]
-    elif (sys.argv[2] == 'uAF_P'):
-        df =f['/Fluid Fields/Auxiliary/Pressure'][:]
-    elif (sys.argv[2] == 'uPF_V1'):   
-        df = f['/Fluid Fields/Primitive/Three-Velocity (1)' ][:] 
-    elif (sys.argv[2] == 'uAF_Ye'):
-        uCF_Ne = f['/Fluid Fields/Conserved/Conserved Electron Density'][:]
-        uCF_D = f['/Fluid Fields/Conserved/Conserved Baryon Density'][:]
-        df = mb * uCF_Ne[0][0][:] / uCF_D[0][0][:]  
-    else:
-        print("Please supply a supported field, or add it in.")      
+    fields = []
+    labels = []
+    units = []
+    for foo in args.x, args.y:
+        if (foo == 'uCF_D'):
+            df = f['/Fluid Fields/Conserved/Conserved Baryon Density'][:]
+            label = 'Density'
+            unit = 'g/cc'
+        elif (foo == 'uAF_P'):
+            df =f['/Fluid Fields/Auxiliary/Pressure'][:]
+            label = 'Pressure'
+            unit = r'erg cm$^{-2}$'
+        elif (foo == 'uAF_T'):
+            df =f['/Fluid Fields/Auxiliary/Temperature'][:]
+            label = 'Temperature'
+            unit = 'K'
+        elif (foo == 'uPF_V1'):   
+            df = f['/Fluid Fields/Primitive/Three-Velocity (1)' ][:] 
+            label = 'Velocity 1'
+            unit = 'cm/s'
+        elif (foo == 'uAF_Ye'):
+            uCF_Ne = f['/Fluid Fields/Conserved/Conserved Electron Density'][:]
+            uCF_D = f['/Fluid Fields/Conserved/Conserved Baryon Density'][:]
+            df = mb * uCF_Ne / uCF_D
+            label = 'Ye'
+        elif (foo == 'uPF_D'):
+            df = f['/Fluid Fields/Primitive/Comoving Baryon Density' ][:]
+            label = 'Density Primitive Fields'
+            unit = 'g/cc'
+        elif (foo =='x' or foo == 'x1'):
+            df = f['/Spatial Grid/X1'][:]  
+            label = 'x'
+            unit = 'km'
+        else:
+            print("Please supply a supported field, or add it in.") 
+        fields.append(df)
+        labels.append(label)
+        units.append(unit)
     
-    time = f['Time'][:]
-    x1 = f['/Spatial Grid/X1'][:]
-    
+    time = f['Time'][:]    
     print(time)   
+if (args.x != 'x'):
+    x_field = fields[0][0][0][:]
+else:
+    x_field = fields[0]    
+y_field = fields[1][0][0][:]
 
-data = np.zeros(len(x1))   
-data = df[0][0][:]
-
-print("Plotting: %s" % sys.argv[2])
+print(f"Plotting: {label}")
 fig, cax = plt.subplots(1, sharex=True,figsize=(7,7))
-cax.plot(x1,data, label=sys.argv[2], color = "magenta", linewidth=1.5)
-cax.set(xlabel="x [km]",ylabel = sys.argv[2])
+cax.plot(x_field, y_field, label=labels[1], color = "magenta", linewidth=1.5)
+cax.set(xlabel=labels[0] + ' [' + units[0] + ']', 
+        ylabel = labels[1] + ' [' + units[1] + ']')
 cax.legend()
 plt.show()
 
